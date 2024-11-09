@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { debounce } from "./debounce";
 import { getWeatherEmoji } from "./getWeatherEmoji";
+import { useRef } from "react";
 
 const WeatherApp = () => {
     const [city, setCity] = useState('');
@@ -8,6 +9,9 @@ const WeatherApp = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [suggestions, setSuggestions] = useState([]); 
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    const suggestionsRef = useRef(null);
   
     const fetchWeather = async () => {
       try {
@@ -55,11 +59,13 @@ const WeatherApp = () => {
           );
           const data = await response.json();
           setSuggestions(data.results || []);
+          setShowSuggestions(true);
         } catch (error) {
           console.error("Error fetching suggestions", error);
         }
       } else {
         setSuggestions([]);
+        setShowSuggestions(false);
       }
     }, 300);
 
@@ -72,8 +78,26 @@ const WeatherApp = () => {
     const handleSuggestionClick = (suggestedCity) => {
       setCity(suggestedCity);
       setSuggestions([]);
+      setShowSuggestions(false);
       fetchWeather();
     };
+    const handleMouseLeave = () => {
+      setShowSuggestions(false);
+    };
+
+    const handleClickOutside = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+
+    useEffect(() => {
+      document.addEventListener("click", handleClickOutside);
+      return () => {
+        document.removeEventListener("click", handleClickOutside);
+      };
+    }, []);
 
   
     return (
@@ -99,7 +123,10 @@ const WeatherApp = () => {
                 {loading ? 'Loading...' : 'Search'}
               </button>
               {suggestions.length > 0 && (
-                <ul className="absolute z-10 bg-white border border-gray-300 rounded-lg mt-2 w-full max-h-40 overflow-y-auto">
+                <ul 
+                ref={suggestionsRef}
+                className="absolute z-10 bg-white border border-gray-300 rounded-lg mt-2 w-full max-h-40 overflow-y-auto"
+                onMouseLeave={handleMouseLeave} >
                   {suggestions.map((suggestion) => (
                     <li
                       key={suggestion.id}
@@ -184,5 +211,8 @@ const WeatherApp = () => {
   };
   
   export default WeatherApp;
+
+
+
 
 

@@ -7,6 +7,8 @@ that Location to render the Weather Conditions.
 > Error Management if the city is not found.
 > React Hooks > Use State > mainly to set the data and use it for rendering purpose.
 >App also has other features such as Wind Speed , 5 day forecast as well.
+> implemented Autosuggestion feature in the search bar to give suggestions based on user input!
+> Implemented debounce in Search Box.
 
 
 
