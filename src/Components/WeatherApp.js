@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { debounce } from "./debounce";
+import { getWeatherEmoji } from "./getWeatherEmoji";
 
 const WeatherApp = () => {
     const [city, setCity] = useState('');
     const [weather, setWeather] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [suggestions, setSuggestions] = useState([]); 
   
     const fetchWeather = async () => {
       try {
@@ -14,7 +17,6 @@ const WeatherApp = () => {
         const geoResponse = await fetch(
           `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`
         );
-        console.log(geoResponse);
         const geoData = await geoResponse.json();
         
         if (!geoData.results?.length) {
@@ -26,7 +28,6 @@ const WeatherApp = () => {
         const weatherResponse = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`
         );
-        console.log(weatherResponse);
         const weatherData = await weatherResponse.json();
         
         setWeather({
@@ -45,19 +46,35 @@ const WeatherApp = () => {
         setLoading(false);
       }
     };
-  
-    const getWeatherEmoji = (code) => {
-      if (code === 0) return '☀️';
-      if (code === 1) return '🌤️';
-      if (code === 2) return '⛅';
-      if (code === 3) return '☁️';
-      if (code >= 45 && code <= 48) return '🌫️';
-      if (code >= 51 && code <= 55) return '🌧️';
-      if (code >= 61 && code <= 65) return '🌧️';
-      if (code >= 71 && code <= 75) return '🌨️';
-      if (code === 95) return '⛈️';
-      return '🌈';
+
+    const fetchSuggestions = debounce(async (input) => {
+      if (input.length > 2) {
+        try {
+          const response = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${input}&count=5&language=en&format=json`
+          );
+          const data = await response.json();
+          setSuggestions(data.results || []);
+        } catch (error) {
+          console.error("Error fetching suggestions", error);
+        }
+      } else {
+        setSuggestions([]);
+      }
+    }, 300);
+
+    const handleChange = (e) => {
+      const input = e.target.value;
+      setCity(input);
+      fetchSuggestions(input);
     };
+
+    const handleSuggestionClick = (suggestedCity) => {
+      setCity(suggestedCity);
+      setSuggestions([]);
+      fetchWeather();
+    };
+
   
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-400 to-blue-600 p-4">
@@ -65,22 +82,35 @@ const WeatherApp = () => {
         <div className="max-w-3xl mx-auto">
          
           <div className="bg-white rounded-lg p-4 mb-4 shadow-lg">
-            <div className="flex gap-2">
+            <div className="relative">
               <input
                 type="text"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={handleChange}
                 placeholder="Enter city name..."
-                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-[85%] px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                 onKeyPress={(e) => e.key === 'Enter' && fetchWeather()}
               />
               <button
                 onClick={fetchWeather}
                 disabled={loading || !city}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
               >
                 {loading ? 'Loading...' : 'Search'}
               </button>
+              {suggestions.length > 0 && (
+                <ul className="absolute z-10 bg-white border border-gray-300 rounded-lg mt-2 w-full max-h-40 overflow-y-auto">
+                  {suggestions.map((suggestion) => (
+                    <li
+                      key={suggestion.id}
+                      onClick={() => handleSuggestionClick(suggestion.name)}
+                      className="px-4 py-2 cursor-pointer hover:bg-blue-100"
+                    >
+                      {suggestion.name}, {suggestion.country}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
   
@@ -92,7 +122,6 @@ const WeatherApp = () => {
   
           {weather && !loading && (
             <div className="space-y-4">
-              
               <div className="bg-white rounded-lg p-6 shadow-lg">
                 <div className="text-center mb-6">
                   <h2 className="text-3xl font-bold text-gray-800 mb-1">
@@ -122,8 +151,6 @@ const WeatherApp = () => {
                   </div>
                 </div>
               </div>
-  
-             
               <div className="bg-white rounded-lg p-6 shadow-lg">
                 <h3 className="text-xl font-semibold mb-4 text-gray-800">5-Day Forecast</h3>
                 <div className="grid gap-4">
@@ -157,3 +184,5 @@ const WeatherApp = () => {
   };
   
   export default WeatherApp;
+
+
